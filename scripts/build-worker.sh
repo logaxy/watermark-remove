@@ -57,31 +57,29 @@ build_arch() {
   )
 }
 
+rm -f "$OUT_DIR/watermark-worker" "$OUT_DIR/watermark-worker-arm64" "$OUT_DIR/watermark-worker-x64"
+
 CURRENT_ARCH="$(uname -m)"
-WORKER_BINS=()
 
 if [ "$CURRENT_ARCH" = "arm64" ]; then
   build_arch arm64
-  WORKER_BINS+=("$BUILD_DIR/arm64/dist/watermark-worker")
+  cp "$BUILD_DIR/arm64/dist/watermark-worker" "$OUT_DIR/watermark-worker-arm64"
+  echo "已生成 arm64 Worker: $OUT_DIR/watermark-worker-arm64"
   if arch -x86_64 /usr/bin/true 2>/dev/null; then
     build_arch x86_64
-    WORKER_BINS+=("$BUILD_DIR/x86_64/dist/watermark-worker")
+    cp "$BUILD_DIR/x86_64/dist/watermark-worker" "$OUT_DIR/watermark-worker-x64"
+    echo "已生成 x64 Worker: $OUT_DIR/watermark-worker-x64"
+  else
+    echo "警告: 当前环境无法构建 x86_64 Worker，Intel Mac 将无法使用"
   fi
 elif [ "$CURRENT_ARCH" = "x86_64" ]; then
   build_arch x86_64
-  WORKER_BINS+=("$BUILD_DIR/x86_64/dist/watermark-worker")
+  cp "$BUILD_DIR/x86_64/dist/watermark-worker" "$OUT_DIR/watermark-worker-x64"
+  echo "已生成 x64 Worker: $OUT_DIR/watermark-worker-x64"
 else
   build_arch "$CURRENT_ARCH"
-  WORKER_BINS+=("$BUILD_DIR/$CURRENT_ARCH/dist/watermark-worker")
+  cp "$BUILD_DIR/$CURRENT_ARCH/dist/watermark-worker" "$OUT_DIR/watermark-worker-$CURRENT_ARCH"
 fi
 
-if [ "${#WORKER_BINS[@]}" -gt 1 ]; then
-  lipo -create "${WORKER_BINS[@]}" -output "$OUT_DIR/watermark-worker"
-  echo "已生成 Universal Worker: $OUT_DIR/watermark-worker"
-else
-  cp "${WORKER_BINS[0]}" "$OUT_DIR/watermark-worker"
-  echo "已生成 Worker: $OUT_DIR/watermark-worker"
-fi
-
-chmod +x "$OUT_DIR/watermark-worker"
+chmod +x "$OUT_DIR"/watermark-worker-* 2>/dev/null || true
 echo "Worker 构建完成"

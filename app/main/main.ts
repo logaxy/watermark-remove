@@ -186,13 +186,29 @@ function resolvePythonBin() {
   return process.platform === "win32" ? "python" : "python3";
 }
 
+function resolveWorkerBinary() {
+  const ext = process.platform === "win32" ? ".exe" : "";
+
+  if (process.platform === "darwin") {
+    const archBinary =
+      process.arch === "arm64" ? "watermark-worker-arm64" : "watermark-worker-x64";
+    const archPath = path.join(bundledBinDir, `${archBinary}${ext}`);
+    if (fs.existsSync(archPath)) {
+      return archPath;
+    }
+  }
+
+  const defaultPath = path.join(bundledBinDir, `watermark-worker${ext}`);
+  if (fs.existsSync(defaultPath)) {
+    return defaultPath;
+  }
+
+  throw new Error(`未找到内置处理引擎 (${process.arch})，请重新安装应用`);
+}
+
 function workerCommand(mode: "process" | "probe") {
   if (app.isPackaged) {
-    const ext = process.platform === "win32" ? ".exe" : "";
-    const workerPath = path.join(bundledBinDir, `watermark-worker${ext}`);
-    if (!fs.existsSync(workerPath)) {
-      throw new Error(`未找到内置处理引擎: ${workerPath}`);
-    }
+    const workerPath = resolveWorkerBinary();
     return { command: workerPath, args: [mode], cwd: bundledBinDir };
   }
 
