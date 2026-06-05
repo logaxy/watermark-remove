@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Callable
 
+from runtime import resolve_binary
 from sticker import render_sticker_png
 from video_info import probe_video
 
@@ -108,7 +109,7 @@ def process_sticker(
         overlay_x = int(roi["x"])
         overlay_y = int(roi["y"])
         command = [
-            "ffmpeg",
+            resolve_binary("ffmpeg"),
             "-y",
             "-i",
             input_path,
@@ -172,7 +173,7 @@ def process_inpaint(input_path: str, output_path: str, roi: dict, temp_root: str
         writer.release()
 
         mux_command = [
-            "ffmpeg",
+            resolve_binary("ffmpeg"),
             "-y",
             "-i",
             silent_video,

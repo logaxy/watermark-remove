@@ -1,0 +1,58 @@
+appId: com.batchvideo.watermarkmaster
+productName: 批量视频水印处理大师
+copyright: Copyright © 2026
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - package.json
+
+extraResources:
+  - from: resources/bin/${os}
+    to: bin
+    filter:
+      - "**/*"
+  - from: resources/fonts
+    to: fonts
+    filter:
+      - "**/*"
+
+asar: true
+
+mac:
+  category: public.app-category.video
+  target:
+    - target: dmg
+      arch:
+        - universal
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  x64ArchFiles: "Contents/Resources/bin/*"
+  artifactName: "${productName}-${version}-mac-universal.${ext}"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  artifactName: "${productName}-${version}-win-${arch}.${ext}"
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: 批量视频水印处理大师
+
+portable:
+  artifactName: "${productName}-${version}-portable.${ext}"
+
+dmg:
+  title: "${productName} ${version}"

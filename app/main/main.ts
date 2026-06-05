@@ -30,9 +30,9 @@ let mainWindow: BrowserWindow | null = null;
 let worker: ChildProcessWithoutNullStreams | null = null;
 
 const isDev = process.env.VITE_DEV_SERVER_URL || !app.isPackaged;
-const projectRoot = app.isPackaged
-  ? path.dirname(app.getPath("exe"))
-  : path.resolve(__dirname, "..", "..");
+const projectRoot = path.resolve(__dirname, "..", "..");
+const resourcesPath = app.isPackaged ? process.resourcesPath : projectRoot;
+const bundledBinDir = path.join(resourcesPath, "bin");
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -186,17 +186,39 @@ function resolvePythonBin() {
   return process.platform === "win32" ? "python" : "python3";
 }
 
+function workerCommand(mode: "process" | "probe") {
+  if (app.isPackaged) {
+    const ext = process.platform === "win32" ? ".exe" : "";
+    const workerPath = path.join(bundledBinDir, `watermark-worker${ext}`);
+    if (!fs.existsSync(workerPath)) {
+      throw new Error(`未找到内置处理引擎: ${workerPath}`);
+    }
+    return { command: workerPath, args: [mode], cwd: bundledBinDir };
+  }
+
+  const workerPath = path.join(projectRoot, "worker", "main.py");
+  return { command: resolvePythonBin(), args: [workerPath, mode], cwd: projectRoot };
+}
+
+function workerEnv() {
+  return {
+    ...process.env,
+    PYTHONUNBUFFERED: "1",
+    WATERMARK_BIN_DIR: bundledBinDir,
+    WATERMARK_RESOURCES_DIR: resourcesPath
+  };
+}
+
 function startQueue(payload: ProcessPayload) {
   stopWorker();
 
-  const workerPath = path.join(projectRoot, "worker", "main.py");
-  const pythonBin = resolvePythonBin();
+  const { command, args, cwd } = workerCommand("process");
   const outputDir = payload.outputDir || defaultOutputDir(payload.videos[0].path);
   fs.mkdirSync(outputDir, { recursive: true });
 
-  worker = spawn(pythonBin, [workerPath, "process"], {
-    cwd: projectRoot,
-    env: { ...process.env, PYTHONUNBUFFERED: "1" }
+  worker = spawn(command, args, {
+    cwd,
+    env: workerEnv()
   });
 
   worker.on("error", (error) => {
@@ -244,13 +266,12 @@ function stopWorker() {
 }
 
 function runWorkerCommand(payload: unknown) {
-  const workerPath = path.join(projectRoot, "worker", "main.py");
-  const pythonBin = resolvePythonBin();
+  const { command, args, cwd } = workerCommand("probe");
 
   return new Promise((resolve, reject) => {
-    const child = spawn(pythonBin, [workerPath, "probe"], {
-      cwd: projectRoot,
-      env: { ...process.env, PYTHONUNBUFFERED: "1" }
+    const child = spawn(command, args, {
+      cwd,
+      env: workerEnv()
     });
 
     let stdout = "";

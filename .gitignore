@@ -6,3 +6,9 @@ dist/
 __pycache__/
 *.pyc
 worker/__pycache__/
+build/worker/
+worker/build/
+worker/dist/
+resources/bin/
+resources/fonts/
+release/

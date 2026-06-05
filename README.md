@@ -75,6 +75,33 @@ docs/
 └─ implementation-notes.md
 ```
 
+## 打包发布（开箱即用）
+
+应用内置 Python Worker、FFmpeg/FFprobe 与中文字体，用户无需安装 Node、Python 或 FFmpeg。
+
+### macOS（Intel + Apple Silicon 通用）
+
+```bash
+npm run pack:mac
+```
+
+产物：`release/批量视频水印处理大师-<version>-mac-universal.dmg`
+
+### Windows（安装包 + 便携版 exe）
+
+在 Windows 机器上执行：
+
+```powershell
+npm run pack:win
+```
+
+产物：
+
+- `release/批量视频水印处理大师-<version>-win-x64.exe`（安装程序）
+- `release/批量视频水印处理大师-<version>-portable.exe`（免安装便携版）
+
+也可通过 GitHub Actions（`.github/workflows/build.yml`）在 tag 推送时自动构建双平台安装包。
+
 ## 注意事项
 
 智能去水印依赖逐帧图像修复，复杂背景下可能出现轻微涂抹感。贴纸覆盖速度更快，是当前建议优先使用的生产策略。

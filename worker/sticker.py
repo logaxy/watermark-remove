@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 from PIL import Image, ImageDraw, ImageFont
 
+from runtime import font_candidates
+
 
 @dataclass(frozen=True)
 class StickerStyle:
@@ -68,16 +70,6 @@ _NAMED_COLORS: dict[str, tuple[int, int, int]] = {
     "lightgray": (211, 211, 211),
 }
 
-_FONT_CANDIDATES = [
-    "/System/Library/Fonts/PingFang.ttc",
-    "/System/Library/Fonts/STHeiti Light.ttc",
-    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
-    "/Library/Fonts/Arial Unicode.ttf",
-    "C:/Windows/Fonts/msyh.ttc",
-    "C:/Windows/Fonts/simhei.ttf",
-]
-
-
 def parse_color(color: str, opacity: float = 1.0) -> tuple[int, int, int, int]:
     if color in _NAMED_COLORS:
         rgb = _NAMED_COLORS[color]
@@ -95,7 +87,7 @@ def parse_color(color: str, opacity: float = 1.0) -> tuple[int, int, int, int]:
 
 
 def load_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    for path in _FONT_CANDIDATES:
+    for path in font_candidates():
         if os.path.exists(path):
             try:
                 return ImageFont.truetype(path, size)

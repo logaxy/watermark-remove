@@ -2,6 +2,7 @@
   "name": "batch-video-watermark-master",
   "version": "0.1.0",
   "private": true,
+  "author": "Batch Video Watermark Master",
   "description": "Local batch video watermark remover and sticker cover desktop app.",
   "main": "dist/main/main.js",
   "scripts": {
@@ -9,7 +10,13 @@
     "build": "tsc -p tsconfig.main.json && vite build",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.main.json --noEmit",
     "setup:python": "bash scripts/setup-python.sh",
-    "worker:check": ".venv/bin/python -m py_compile worker/main.py worker/video_info.py worker/processors.py worker/sticker.py"
+    "worker:check": ".venv/bin/python -m py_compile worker/main.py worker/video_info.py worker/processors.py worker/sticker.py worker/runtime.py",
+    "fetch:ffmpeg": "bash scripts/fetch-ffmpeg.sh",
+    "fetch:font": "bash scripts/fetch-font.sh",
+    "build:worker": "bash scripts/build-worker.sh",
+    "pack:mac": "bash scripts/package-mac.sh",
+    "pack:win": "powershell -ExecutionPolicy Bypass -File scripts/package-win.ps1",
+    "dist": "npm run build && electron-builder"
   },
   "dependencies": {
     "@types/node": "^22.10.0",
@@ -17,7 +24,6 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.0",
     "concurrently": "^9.1.0",
-    "electron": "^32.0.0",
     "vite": "^6.0.0",
     "wait-on": "^8.0.0",
     "typescript": "^5.6.0",
@@ -25,5 +31,11 @@
     "react-dom": "^19.0.0",
     "lucide-react": "^0.468.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "extends": "electron-builder.yml"
+  }
 }

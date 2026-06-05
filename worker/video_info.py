@@ -4,10 +4,12 @@ import json
 import subprocess
 from typing import Any
 
+from runtime import resolve_binary
+
 
 def probe_video(path: str) -> dict[str, Any]:
     command = [
-        "ffprobe",
+        resolve_binary("ffprobe"),
         "-v",
         "error",
         "-select_streams",
