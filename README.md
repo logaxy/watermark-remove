@@ -23,13 +23,22 @@
 - Python 包：
 
 ```bash
-pip install opencv-python numpy pillow
+npm run setup:python
+```
+
+或手动安装：
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r worker/requirements.txt
 ```
 
 ## 开发运行
 
 ```bash
 npm install
+npm run setup:python
 npm run dev
 ```
 

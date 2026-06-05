@@ -167,11 +167,30 @@ function defaultOutputDir(videoPath: string) {
   return path.join(path.dirname(videoPath), "output");
 }
 
+function resolvePythonBin() {
+  if (process.env.PYTHON_BIN) {
+    return process.env.PYTHON_BIN;
+  }
+
+  const venvCandidates =
+    process.platform === "win32"
+      ? [path.join(projectRoot, ".venv", "Scripts", "python.exe")]
+      : [path.join(projectRoot, ".venv", "bin", "python3"), path.join(projectRoot, ".venv", "bin", "python")];
+
+  for (const candidate of venvCandidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return process.platform === "win32" ? "python" : "python3";
+}
+
 function startQueue(payload: ProcessPayload) {
   stopWorker();
 
   const workerPath = path.join(projectRoot, "worker", "main.py");
-  const pythonBin = process.env.PYTHON_BIN || "python3";
+  const pythonBin = resolvePythonBin();
   const outputDir = payload.outputDir || defaultOutputDir(payload.videos[0].path);
   fs.mkdirSync(outputDir, { recursive: true });
 
@@ -226,7 +245,7 @@ function stopWorker() {
 
 function runWorkerCommand(payload: unknown) {
   const workerPath = path.join(projectRoot, "worker", "main.py");
-  const pythonBin = process.env.PYTHON_BIN || "python3";
+  const pythonBin = resolvePythonBin();
 
   return new Promise((resolve, reject) => {
     const child = spawn(pythonBin, [workerPath, "probe"], {

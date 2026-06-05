@@ -8,7 +8,8 @@
     "dev": "concurrently \"vite --host 127.0.0.1\" \"tsc -p tsconfig.main.json --watch\" \"wait-on http://127.0.0.1:5273 dist/main/main.js && electron .\"",
     "build": "tsc -p tsconfig.main.json && vite build",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.main.json --noEmit",
-    "worker:check": "python3 -m py_compile worker/main.py worker/video_info.py worker/processors.py worker/sticker.py"
+    "setup:python": "bash scripts/setup-python.sh",
+    "worker:check": ".venv/bin/python -m py_compile worker/main.py worker/video_info.py worker/processors.py worker/sticker.py"
   },
   "dependencies": {
     "@types/node": "^22.10.0",
