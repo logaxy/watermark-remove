@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FolderOpen, Play, Square, WandSparkles } from "lucide-react";
 import { ProcessLog, type LogEntry } from "./components/ProcessLog";
+import { StickerStyleCard } from "./components/StickerStyleCard";
 import { VideoCanvas } from "./components/VideoCanvas";
 import { VideoList } from "./components/VideoList";
 import type { BatchRoiConfig, JobEvent, Roi, VideoItem } from "./types";
@@ -13,18 +14,8 @@ import {
   fileNameFromPath,
   resolveVideoRoi
 } from "./lib/video";
+import { STICKER_STYLES } from "./lib/sticker-styles";
 import "./styles/app.css";
-
-const stickerStyles = [
-  { id: "classic", name: "经典黑白", preview: "黑底白字" },
-  { id: "variety", name: "综艺爆款", preview: "黄字描边" },
-  { id: "warning", name: "警示红", preview: "纯红文字" },
-  { id: "business", name: "商务风", preview: "灰底深字" },
-  { id: "ocean", name: "清爽蓝", preview: "蓝底白字" },
-  { id: "mint", name: "薄荷绿", preview: "绿底黑字" },
-  { id: "violet", name: "轻紫边框", preview: "紫框白底" },
-  { id: "darkline", name: "暗色细框", preview: "深底边框" }
-];
 
 export default function App() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
@@ -33,7 +24,7 @@ export default function App() {
   const [fineTuneMode, setFineTuneMode] = useState(false);
   const [strategy, setStrategy] = useState<"inpaint" | "sticker">("sticker");
   const [stickerText, setStickerText] = useState("关注我");
-  const [styleId, setStyleId] = useState("classic");
+  const [styleId, setStyleId] = useState("solid-white");
   const [sourceFolder, setSourceFolder] = useState<string>();
   const [outputDir, setOutputDir] = useState<string>();
   const [isRunning, setIsRunning] = useState(false);
@@ -433,6 +424,9 @@ export default function App() {
             )}
             roiVariant={hasOverride && !isTemplateSelected ? "override" : "default"}
             onRoiEdit={handleRoiEdit}
+            showStickerPreview={strategy === "sticker" && Boolean(resolvedRoi)}
+            stickerText={stickerText}
+            stickerStyleId={styleId}
             onNaturalSize={(width, height) => {
               if (!selectedVideo?.id) return;
               setVideos((current) =>
@@ -478,17 +472,28 @@ export default function App() {
                   onChange={(event) => setStickerText(event.target.value)}
                 />
               </label>
+              <div className="style-section-label">不透明遮挡 · 彻底盖住水印</div>
               <div className="style-grid">
-                {stickerStyles.map((style) => (
-                  <button
+                {STICKER_STYLES.filter((style) => style.category === "block").map((style) => (
+                  <StickerStyleCard
                     key={style.id}
-                    className={`style-card ${styleId === style.id ? "selected" : ""}`}
-                    type="button"
-                    onClick={() => setStyleId(style.id)}
-                  >
-                    <span>{style.preview}</span>
-                    <strong>{style.name}</strong>
-                  </button>
+                    style={style}
+                    selected={styleId === style.id}
+                    previewText={stickerText}
+                    onSelect={() => setStyleId(style.id)}
+                  />
+                ))}
+              </div>
+              <div className="style-section-label">透明叠加 · 适合加字展示</div>
+              <div className="style-grid">
+                {STICKER_STYLES.filter((style) => style.category === "overlay").map((style) => (
+                  <StickerStyleCard
+                    key={style.id}
+                    style={style}
+                    selected={styleId === style.id}
+                    previewText={stickerText}
+                    onSelect={() => setStyleId(style.id)}
+                  />
                 ))}
               </div>
             </>

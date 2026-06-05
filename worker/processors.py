@@ -103,7 +103,7 @@ def process_sticker(
             sticker_path,
             roi,
             strategy.get("text", ""),
-            strategy.get("styleId", "classic"),
+            strategy.get("styleId", "solid-white"),
         )
         overlay_x = int(roi["x"])
         overlay_y = int(roi["y"])

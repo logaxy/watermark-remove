@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
+import { StickerOverlay } from "./StickerOverlay";
 import type { Roi } from "../types";
 import {
   formatDuration,
@@ -16,6 +17,9 @@ type Props = {
   resolvedRoi?: Roi | null;
   editable: boolean;
   roiVariant?: "default" | "override";
+  showStickerPreview?: boolean;
+  stickerText?: string;
+  stickerStyleId?: string;
   onRoiEdit: (roi: Roi) => void;
   onNaturalSize?: (width: number, height: number) => void;
 };
@@ -29,6 +33,9 @@ export function VideoCanvas({
   resolvedRoi,
   editable,
   roiVariant = "default",
+  showStickerPreview = false,
+  stickerText = "",
+  stickerStyleId = "solid-white",
   onRoiEdit,
   onNaturalSize
 }: Props) {
@@ -186,14 +193,21 @@ export function VideoCanvas({
         {loadError && <div className="preview-error">{loadError}</div>}
         {displayRoi && (
           <div
-            className={`roi-box ${roiVariant === "override" ? "roi-box-override" : ""}`}
+            className={`roi-box ${roiVariant === "override" ? "roi-box-override" : ""} ${
+              showStickerPreview ? "roi-box-sticker" : ""
+            }`}
             style={{
               left: displayRoi.x,
               top: displayRoi.y,
               width: displayRoi.width,
-              height: displayRoi.height
+              height: displayRoi.height,
+              fontSize: `${Math.max(10, Math.min(28, displayRoi.height * 0.42))}px`
             }}
-          />
+          >
+            {showStickerPreview && (
+              <StickerOverlay text={stickerText} styleId={stickerStyleId} variant="canvas" />
+            )}
+          </div>
         )}
       </div>
 
