@@ -12,6 +12,17 @@ import {
   type SelectVideosResult
 } from "./video-import";
 
+// 版本信息类型
+type VersionInfo = {
+  version: string;
+  buildTime?: string;
+  gitCommit?: string;
+  gitBranch?: string;
+  electronVersion: string;
+  chromeVersion: string;
+  nodeVersion: string;
+};
+
 type VideoStrategy =
   | { kind: "inpaint" }
   | { kind: "sticker"; text: string; styleId: string };
@@ -33,6 +44,38 @@ const isDev = process.env.VITE_DEV_SERVER_URL || !app.isPackaged;
 const projectRoot = path.resolve(__dirname, "..", "..");
 const resourcesPath = app.isPackaged ? process.resourcesPath : projectRoot;
 const bundledBinDir = path.join(resourcesPath, "bin");
+
+// 读取版本信息
+function getVersionInfo(): VersionInfo {
+  const versionFile = path.join(__dirname, "../version.json");
+  let extraInfo = {};
+
+  if (fs.existsSync(versionFile)) {
+    try {
+      extraInfo = JSON.parse(fs.readFileSync(versionFile, "utf-8"));
+    } catch {
+      // ignore
+    }
+  }
+
+  return {
+    version: app.getVersion(),
+    electronVersion: process.versions.electron,
+    chromeVersion: process.versions.chrome,
+    nodeVersion: process.versions.node,
+    ...extraInfo
+  };
+}
+
+// 应用启动时打印版本信息
+console.log("=".repeat(50));
+console.log("批量视频水印处理大师");
+console.log(`版本: ${app.getVersion()}`);
+console.log(`Electron: ${process.versions.electron}`);
+console.log(`Node: ${process.versions.node}`);
+console.log(`Chrome: ${process.versions.chrome}`);
+console.log(`Platform: ${process.platform} ${process.arch}`);
+console.log("=".repeat(50));
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -163,6 +206,11 @@ ipcMain.handle("jobs:cancel", async () => {
   return { ok: true };
 });
 
+// 暴露版本信息给前端
+ipcMain.handle("app:version", async () => {
+  return getVersionInfo();
+});
+
 function defaultOutputDir(videoPath: string) {
   return path.join(path.dirname(videoPath), "output");
 }
@@ -189,21 +237,46 @@ function resolvePythonBin() {
 function resolveWorkerBinary() {
   const ext = process.platform === "win32" ? ".exe" : "";
 
+  // 调试日志：记录查找信息
+  console.log(`[resolveWorkerBinary] platform=${process.platform}, arch=${process.arch}`);
+  console.log(`[resolveWorkerBinary] bundledBinDir=${bundledBinDir}`);
+  console.log(`[resolveWorkerBinary] resourcesPath=${resourcesPath}`);
+  console.log(`[resolveWorkerBinary] isPackaged=${app.isPackaged}`);
+
+  // macOS: 根据架构查找对应的 worker
   if (process.platform === "darwin") {
     const archBinary =
       process.arch === "arm64" ? "watermark-worker-arm64" : "watermark-worker-x64";
     const archPath = path.join(bundledBinDir, `${archBinary}${ext}`);
+    console.log(`[resolveWorkerBinary] macOS looking for: ${archPath}`);
     if (fs.existsSync(archPath)) {
       return archPath;
     }
+    // 如果找不到架构特定版本，尝试默认名称
+    console.log(`[resolveWorkerBinary] Architecture-specific worker not found, trying default`);
   }
 
+  // Windows 和其他平台：默认名称
   const defaultPath = path.join(bundledBinDir, `watermark-worker${ext}`);
+  console.log(`[resolveWorkerBinary] Looking for default: ${defaultPath}`);
+
   if (fs.existsSync(defaultPath)) {
     return defaultPath;
   }
 
-  throw new Error(`未找到内置处理引擎 (${process.arch})，请重新安装应用`);
+  // 尝试列出 bin 目录内容（调试用）
+  try {
+    if (fs.existsSync(bundledBinDir)) {
+      const files = fs.readdirSync(bundledBinDir);
+      console.log(`[resolveWorkerBinary] Files in ${bundledBinDir}:`, files);
+    } else {
+      console.log(`[resolveWorkerBinary] bundledBinDir does not exist: ${bundledBinDir}`);
+    }
+  } catch (e) {
+    console.error(`[resolveWorkerBinary] Error listing directory:`, e);
+  }
+
+  throw new Error(`未找到内置处理引擎 (${process.platform} ${process.arch})，请重新安装应用`);
 }
 
 function workerCommand(mode: "process" | "probe") {

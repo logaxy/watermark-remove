@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Callable
@@ -189,7 +190,14 @@ def process_inpaint(input_path: str, output_path: str, roi: dict, temp_root: str
             "-shortest",
             output_path,
         ]
-        subprocess.run(mux_command, capture_output=True, text=True, check=True)
+        result = subprocess.run(mux_command, capture_output=True, text=True, check=False)
+        if result.returncode != 0:
+            error_msg = format_ffmpeg_error(result.stderr) or f"FFmpeg 合并失败 (code {result.returncode})"
+            # 记录详细错误信息用于调试
+            print(f"[FFmpeg Error] Command: {' '.join(mux_command)}", file=sys.stderr)
+            print(f"[FFmpeg Error] stderr: {result.stderr}", file=sys.stderr)
+            print(f"[FFmpeg Error] stdout: {result.stdout}", file=sys.stderr)
+            raise RuntimeError(error_msg)
         on_progress(100)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)

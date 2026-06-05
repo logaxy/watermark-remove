@@ -7,7 +7,7 @@
   "main": "dist/main/main.js",
   "scripts": {
     "dev": "concurrently \"vite --host 127.0.0.1\" \"tsc -p tsconfig.main.json --watch\" \"wait-on http://127.0.0.1:5273 dist/main/main.js && electron .\"",
-    "build": "tsc -p tsconfig.main.json && vite build",
+    "build": "tsc -p tsconfig.main.json && vite build && bash scripts/inject-version.sh",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.main.json --noEmit",
     "setup:python": "bash scripts/setup-python.sh",
     "worker:check": ".venv/bin/python -m py_compile worker/main.py worker/video_info.py worker/processors.py worker/sticker.py worker/runtime.py",
@@ -16,7 +16,8 @@
     "build:worker": "bash scripts/build-worker.sh",
     "pack:mac": "bash scripts/package-mac.sh",
     "pack:win": "powershell -ExecutionPolicy Bypass -File scripts/package-win.ps1",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "version:inject": "bash scripts/inject-version.sh"
   },
   "dependencies": {
     "@types/node": "^22.10.0",

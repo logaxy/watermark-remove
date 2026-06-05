@@ -9,6 +9,9 @@ npm install
 Write-Host "==> 构建前端与主进程"
 npm run build
 
+Write-Host "==> 注入版本信息"
+bash scripts/inject-version.sh
+
 Write-Host "==> 下载 FFmpeg"
 powershell -ExecutionPolicy Bypass -File "$Root\scripts\fetch-ffmpeg.ps1"
 

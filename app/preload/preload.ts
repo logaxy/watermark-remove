@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld("watermarkApi", {
   probeVideo: (path: string) => ipcRenderer.invoke("videos:probe", path),
   startJob: (payload: unknown) => ipcRenderer.invoke("jobs:start", payload),
   cancelJob: () => ipcRenderer.invoke("jobs:cancel"),
+  getVersion: () => ipcRenderer.invoke("app:version"),
   onJobEvent: (callback: (event: unknown) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => callback(payload);
     ipcRenderer.on("jobs:event", listener);

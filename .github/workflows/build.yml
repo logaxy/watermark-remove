@@ -2,46 +2,236 @@ name: Build Desktop Apps
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: 构建平台
+        required: true
+        default: all
+        type: choice
+        options:
+          - windows
+          - mac
+          - all
   push:
     tags:
       - "v*"
 
 jobs:
   build-mac:
+    if: github.event_name == 'push' || inputs.platform == 'mac' || inputs.platform == 'all'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=$(cat package.json | grep '"version"' | head -1 | awk -F: '{ print $2 }' | sed 's/[",]//g' | tr -d '[[:space:]]')
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Install Rosetta 2
+        run: |
+          if [ "$(uname -m)" = "arm64" ]; then
+            echo "Installing Rosetta 2..."
+            softwareupdate --install-rosetta --agree-to-license || true
+          fi
+
       - name: Package macOS
-        run: bash scripts/package-mac.sh
-      - uses: actions/upload-artifact@v4
+        env:
+          GIT_TAG: ${{ github.ref }}
+        run: |
+          if arch -x86_64 /usr/bin/true 2>/dev/null; then
+            echo "✓ Rosetta 2 is working, can build x86_64"
+          else
+            echo "⚠ Warning: Rosetta 2 may not be available"
+          fi
+          bash scripts/package-mac.sh
+
+      - name: Verify built workers
+        run: |
+          echo "Built workers:"
+          ls -la resources/bin/mac/ || echo "Directory not found"
+          for f in resources/bin/mac/watermark-worker-*; do
+            if [ -f "$f" ]; then
+              echo "Checking: $f"
+              file "$f" || true
+            fi
+          done
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: mac-universal
+          name: mac-artifact
           path: release/*.dmg
+          if-no-files-found: error
 
   build-win:
+    if: github.event_name == 'push' || inputs.platform == 'windows' || inputs.platform == 'all'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -match '^refs/tags/v') {
+            $VERSION = $env:GITHUB_REF -replace '^refs/tags/v', ''
+          } else {
+            $VERSION = (Get-Content package.json | ConvertFrom-Json).version
+          }
+          echo "VERSION=$VERSION" >> $env:GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Package Windows
         shell: pwsh
+        env:
+          GIT_TAG: ${{ github.ref }}
         run: ./scripts/package-win.ps1
-      - uses: actions/upload-artifact@v4
+
+      - name: Verify built worker
+        shell: pwsh
+        run: |
+          Write-Host "=== Verifying Windows Worker ==="
+          $workerPath = "resources\bin\win\watermark-worker.exe"
+          if (Test-Path $workerPath) {
+            Write-Host "✓ Worker found: $workerPath"
+            $fileInfo = Get-Item $workerPath
+            Write-Host "  Size: $($fileInfo.Length) bytes"
+          } else {
+            Write-Host "✗ Worker NOT found: $workerPath"
+            Write-Host "Contents of resources\bin\win:"
+            Get-ChildItem -Path "resources\bin\win" -Recurse -ErrorAction SilentlyContinue
+          }
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
         with:
-          name: windows-installer
+          name: win-artifacts
           path: |
-            release/*.exe
-            release/*portable*.exe
+            release/*-win-x64.exe
+            release/*-portable.exe
+          if-no-files-found: error
+
+  create-release:
+    needs: [build-mac, build-win]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: false
+
+      - name: Display artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          find artifacts -type f -name "*.dmg" -o -name "*.exe" | while read f; do
+            echo "  - $f ($(stat -c%s "$f" | numfmt --to=iec))"
+          done
+
+      - name: Generate Release Notes
+        id: release-notes
+        run: |
+          VERSION=${{ steps.version.outputs.VERSION }}
+
+          # 获取当前 tag 和上一个 tag 之间的提交
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            COMMIT_RANGE="${PREVIOUS_TAG}..HEAD"
+          else
+            COMMIT_RANGE="$(git rev-list --max-parents=0 HEAD)..HEAD"
+          fi
+
+          # 生成发布说明
+          cat > release_notes.md << EOF
+          ## 🎉 批量视频水印处理大师 v${VERSION}
+
+          ### 📦 安装包
+
+          | 平台 | 文件 | 说明 |
+          |------|------|------|
+          | **macOS** | 批量视频水印处理大师-${VERSION}-mac-universal.dmg | Intel & Apple Silicon 通用 |
+          | **Windows** | 批量视频水印处理大师-${VERSION}-win-x64.exe | 安装程序 |
+          | **Windows** | 批量视频水印处理大师-${VERSION}-portable.exe | 便携版（免安装） |
+
+          ### 🔧 系统要求
+
+          - **macOS**: macOS 11.0 或更高版本 (Intel/Apple Silicon)
+          - **Windows**: Windows 10/11 64位
+
+          ### ✨ 更新内容
+
+          EOF
+
+          # 添加最近提交
+          echo "#### 最近更新:" >> release_notes.md
+          git log ${COMMIT_RANGE} --pretty=format:"- %s (@%an)" --reverse >> release_notes.md
+          echo "" >> release_notes.md
+
+          cat >> release_notes.md << EOF
+
+          ### 🚀 功能特性
+
+          - ✂️ 批量视频去水印（OpenCV 智能修复）
+          - 🎨 贴纸覆盖（8 种预设样式）
+          - 📁 批量处理（3-10 个视频）
+          - 🎯 ROI 区域框选
+          - 💻 本地处理，无需上传云端
+
+          ---
+          **完整更新日志**: [CHANGELOG.md](./CHANGELOG.md)
+          EOF
+
+          cat release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: v${{ steps.version.outputs.VERSION }}
+          body_path: release_notes.md
+          files: |
+            artifacts/mac-artifact/*.dmg
+            artifacts/win-artifacts/*.exe
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

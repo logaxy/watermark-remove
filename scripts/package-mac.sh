@@ -10,6 +10,9 @@ npm install
 echo "==> 构建前端与主进程"
 npm run build
 
+echo "==> 注入版本信息"
+bash scripts/inject-version.sh
+
 echo "==> 下载 FFmpeg"
 bash scripts/fetch-ffmpeg.sh
 

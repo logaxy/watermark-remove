@@ -15,15 +15,25 @@ setup_arch_venv() {
   if [ ! -d "$arch_venv" ]; then
     echo "创建 $arch Python 虚拟环境..."
     if [ "$arch" = "x86_64" ]; then
-      arch -x86_64 /usr/bin/python3 -m venv "$arch_venv"
+      # 尝试使用 Rosetta 创建 x86_64 环境
+      if arch -x86_64 /usr/bin/true 2>/dev/null; then
+        arch -x86_64 /usr/bin/python3 -m venv "$arch_venv"
+      else
+        echo "警告: 当前环境不支持 x86_64 构建，跳过"
+        return 1
+      fi
     else
       python3 -m venv "$arch_venv"
     fi
   fi
 
   if [ "$arch" = "x86_64" ]; then
-    arch -x86_64 "$arch_venv/bin/python" -m pip install --upgrade pip >/dev/null
-    arch -x86_64 "$arch_venv/bin/python" -m pip install -r "$WORKER_DIR/requirements.txt" pyinstaller >/dev/null
+    if arch -x86_64 /usr/bin/true 2>/dev/null; then
+      arch -x86_64 "$arch_venv/bin/python" -m pip install --upgrade pip >/dev/null
+      arch -x86_64 "$arch_venv/bin/python" -m pip install -r "$WORKER_DIR/requirements.txt" pyinstaller >/dev/null
+    else
+      return 1
+    fi
   else
     "$arch_venv/bin/python" -m pip install --upgrade pip >/dev/null
     "$arch_venv/bin/python" -m pip install -r "$WORKER_DIR/requirements.txt" pyinstaller >/dev/null
@@ -35,7 +45,11 @@ build_arch() {
   local arch_dir="$BUILD_DIR/$arch"
   local arch_venv="$BUILD_DIR/venv-$arch"
 
-  setup_arch_venv "$arch"
+  if ! setup_arch_venv "$arch"; then
+    echo "✗ 无法设置 $arch 构建环境，跳过"
+    return 1
+  fi
+
   mkdir -p "$arch_dir"
 
   echo "构建 Python Worker ($arch)..."
@@ -57,29 +71,49 @@ build_arch() {
   )
 }
 
+# 清理旧的构建
 rm -f "$OUT_DIR/watermark-worker" "$OUT_DIR/watermark-worker-arm64" "$OUT_DIR/watermark-worker-x64"
 
 CURRENT_ARCH="$(uname -m)"
+BUILD_SUCCESS=0
 
+# 优先构建当前架构
+echo "当前架构: $CURRENT_ARCH"
 if [ "$CURRENT_ARCH" = "arm64" ]; then
-  build_arch arm64
-  cp "$BUILD_DIR/arm64/dist/watermark-worker" "$OUT_DIR/watermark-worker-arm64"
-  echo "已生成 arm64 Worker: $OUT_DIR/watermark-worker-arm64"
-  if arch -x86_64 /usr/bin/true 2>/dev/null; then
-    build_arch x86_64
-    cp "$BUILD_DIR/x86_64/dist/watermark-worker" "$OUT_DIR/watermark-worker-x64"
-    echo "已生成 x64 Worker: $OUT_DIR/watermark-worker-x64"
-  else
-    echo "警告: 当前环境无法构建 x86_64 Worker，Intel Mac 将无法使用"
+  if build_arch arm64; then
+    cp "$BUILD_DIR/arm64/dist/watermark-worker" "$OUT_DIR/watermark-worker-arm64"
+    echo "✓ 已生成 arm64 Worker: $OUT_DIR/watermark-worker-arm64"
+    BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
   fi
+
+  # 尝试构建 x86_64
+  if arch -x86_64 /usr/bin/true 2>/dev/null; then
+    if build_arch x86_64; then
+      cp "$BUILD_DIR/x86_64/dist/watermark-worker" "$OUT_DIR/watermark-worker-x64"
+      echo "✓ 已生成 x64 Worker: $OUT_DIR/watermark-worker-x64"
+      BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
+    fi
+  else
+    echo "⚠ 警告: 当前环境无法构建 x86_64 Worker，Intel Mac 将无法使用"
+    echo "  如果在 GitHub Actions 上运行，请确保使用支持双架构的 runner"
+  fi
+
 elif [ "$CURRENT_ARCH" = "x86_64" ]; then
-  build_arch x86_64
-  cp "$BUILD_DIR/x86_64/dist/watermark-worker" "$OUT_DIR/watermark-worker-x64"
-  echo "已生成 x64 Worker: $OUT_DIR/watermark-worker-x64"
+  if build_arch x86_64; then
+    cp "$BUILD_DIR/x86_64/dist/watermark-worker" "$OUT_DIR/watermark-worker-x64"
+    echo "✓ 已生成 x64 Worker: $OUT_DIR/watermark-worker-x64"
+    BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
+  fi
+
+  # 在 Intel Mac 上通常无法构建 arm64
+  echo "⚠ 提示: 在 Intel Mac 上无法构建 arm64 Worker"
 else
-  build_arch "$CURRENT_ARCH"
-  cp "$BUILD_DIR/$CURRENT_ARCH/dist/watermark-worker" "$OUT_DIR/watermark-worker-$CURRENT_ARCH"
+  echo "未知架构: $CURRENT_ARCH"
+  exit 1
 fi
 
 chmod +x "$OUT_DIR"/watermark-worker-* 2>/dev/null || true
-echo "Worker 构建完成"
+
+echo ""
+echo "构建完成: $BUILD_SUCCESS 个架构成功"
+ls -la "$OUT_DIR"/watermark-worker-* 2>/dev/null || echo "未找到构建产物"

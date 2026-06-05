@@ -1,6 +1,28 @@
 # 批量视频水印处理大师
 
+[![Build Desktop Apps](https://github.com/logaxy/batch-video-watermark-master/actions/workflows/build.yml/badge.svg)](https://github.com/logaxy/batch-video-watermark-master/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/logaxy/batch-video-watermark-master?include_prereleases)](https://github.com/logaxy/batch-video-watermark-master/releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 面向短视频创作者的本地化批量视频水印处理桌面应用。当前版本实现 PRD 中的核心 MVP：3-5 个视频批量导入、模板视频 ROI 框选、统一策略处理、贴纸覆盖、OpenCV 智能去水印、队列进度回传与输出目录管理。
+
+## 📥 下载安装包
+
+> 无需安装 Node.js、Python 或 FFmpeg，开箱即用
+
+### 最新版本 (v0.1.0)
+
+| 平台 | 安装包 | 说明 |
+|------|--------|------|
+| **macOS** | [📦 DMG (Universal)](https://github.com/logaxy/batch-video-watermark-master/releases/latest/download/批量视频水印处理大师-0.1.0-mac-universal.dmg) | 支持 Intel 和 Apple Silicon |
+| **Windows** | [📦 安装程序](https://github.com/logaxy/batch-video-watermark-master/releases/latest/download/批量视频水印处理大师-0.1.0-win-x64.exe) | 标准安装版 |
+| **Windows** | [📦 便携版](https://github.com/logaxy/batch-video-watermark-master/releases/latest/download/批量视频水印处理大师-0.1.0-portable.exe) | 免安装，直接运行 |
+
+### 历史版本
+
+👉 [查看所有 Releases](https://github.com/logaxy/batch-video-watermark-master/releases)
+
+---
 
 ## 功能
 
