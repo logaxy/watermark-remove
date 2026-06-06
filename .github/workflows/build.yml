@@ -189,9 +189,9 @@ jobs:
 
           | 平台 | 文件 | 说明 |
           |------|------|------|
-          | **macOS** | 批量视频水印处理大师-${VERSION}-mac-universal.dmg | Intel & Apple Silicon 通用 |
-          | **Windows** | 批量视频水印处理大师-${VERSION}-win-x64.exe | 安装程序 |
-          | **Windows** | 批量视频水印处理大师-${VERSION}-portable.exe | 便携版（免安装） |
+          | **macOS** | BatchWatermarkMaster-${VERSION}-mac-universal.dmg | Intel & Apple Silicon 通用 |
+          | **Windows** | BatchWatermarkMaster-${VERSION}-win-x64.exe | 安装程序 |
+          | **Windows** | BatchWatermarkMaster-${VERSION}-portable.exe | 便携版（免安装） |
 
           ### 🔧 系统要求
 
@@ -222,6 +222,43 @@ jobs:
           EOF
 
           cat release_notes.md
+
+      - name: Sanitize asset filenames (strip non-ASCII for GitHub Release)
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          set -e
+          # 将 productName 中文前缀的安装包改为 ASCII 命名，
+          # 避免 softprops/action-gh-release@v1 把中文吃掉导致下载 404。
+          # UI 显示的 productName 仍保留中文，不受此步骤影响。
+          SAFE_NAME="BatchWatermarkMaster"
+          cd artifacts
+          for art in mac-artifact win-artifacts; do
+            if [ -d "$art" ]; then
+              cd "$art"
+              # 任意以非 ASCII 起头的 *.dmg / *.exe 文件，重命名为 ASCII
+              for f in *.dmg *.exe; do
+                [ -e "$f" ] || continue
+                case "$f" in
+                  *-mac-universal.dmg)
+                    mv -v "$f" "${SAFE_NAME}-${VERSION}-mac-universal.dmg"
+                    ;;
+                  *-win-x64.exe)
+                    mv -v "$f" "${SAFE_NAME}-${VERSION}-win-x64.exe"
+                    ;;
+                  *-portable.exe)
+                    mv -v "$f" "${SAFE_NAME}-${VERSION}-portable.exe"
+                    ;;
+                  *)
+                    echo "Skipping unrecognized file: $f"
+                    ;;
+                esac
+              done
+              cd ..
+            fi
+          done
+          echo "--- Sanitized layout ---"
+          find . -type f -name "*.dmg" -o -name "*.exe" | sort
 
       - name: Create Release
         uses: softprops/action-gh-release@v1

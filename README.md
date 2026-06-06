@@ -14,9 +14,9 @@
 
 | 平台 | 安装包 | 说明 |
 |------|--------|------|
-| **macOS** | [📦 DMG (Universal)](https://github.com/logaxy/watermark-remove/releases/latest/download/批量视频水印处理大师-0.1.0-mac-universal.dmg) | 支持 Intel 和 Apple Silicon |
-| **Windows** | [📦 安装程序](https://github.com/logaxy/watermark-remove/releases/latest/download/批量视频水印处理大师-0.1.0-win-x64.exe) | 标准安装版 |
-| **Windows** | [📦 便携版](https://github.com/logaxy/watermark-remove/releases/latest/download/批量视频水印处理大师-0.1.0-portable.exe) | 免安装，直接运行 |
+| **macOS** | [📦 DMG (Universal)](https://github.com/logaxy/watermark-remove/releases/latest/download/BatchWatermarkMaster-0.1.0-mac-universal.dmg) | 支持 Intel 和 Apple Silicon |
+| **Windows** | [📦 安装程序](https://github.com/logaxy/watermark-remove/releases/latest/download/BatchWatermarkMaster-0.1.0-win-x64.exe) | 标准安装版 |
+| **Windows** | [📦 便携版](https://github.com/logaxy/watermark-remove/releases/latest/download/BatchWatermarkMaster-0.1.0-portable.exe) | 免安装，直接运行 |
 
 ### 历史版本
 
