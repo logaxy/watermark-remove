@@ -116,15 +116,15 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "=== Verifying Windows Worker ==="
-          $workerPath = "resources\bin\win\watermark-worker.exe"
+          $workerPath = "resources\bin\win32\watermark-worker.exe"
           if (Test-Path $workerPath) {
             Write-Host "✓ Worker found: $workerPath"
             $fileInfo = Get-Item $workerPath
             Write-Host "  Size: $($fileInfo.Length) bytes"
           } else {
             Write-Host "✗ Worker NOT found: $workerPath"
-            Write-Host "Contents of resources\bin\win:"
-            Get-ChildItem -Path "resources\bin\win" -Recurse -ErrorAction SilentlyContinue
+            Write-Host "Contents of resources\bin\win32:"
+            Get-ChildItem -Path "resources\bin\win32" -Recurse -ErrorAction SilentlyContinue
           }
 
       - name: Upload Windows artifacts

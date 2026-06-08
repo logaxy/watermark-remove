@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WorkerDir = Join-Path $Root "worker"
-$OutDir = Join-Path $Root "resources\bin\win"
+$OutDir = Join-Path $Root "resources\bin\win32"
 $VenvPython = Join-Path $Root ".venv\Scripts\python.exe"
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
