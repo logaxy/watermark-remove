@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORKER_DIR="$ROOT/worker"
-OUT_DIR="$ROOT/resources/bin/mac"
+OUT_DIR="$ROOT/resources/bin/darwin"
 BUILD_DIR="$ROOT/build/worker"
 
 mkdir -p "$OUT_DIR" "$BUILD_DIR"

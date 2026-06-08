@@ -32,7 +32,6 @@ mac:
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  x64ArchFiles: "Contents/Resources/bin/*"
   artifactName: "${productName}-${version}-mac-universal.${ext}"
 
 win:
