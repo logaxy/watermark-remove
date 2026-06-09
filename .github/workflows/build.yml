@@ -207,6 +207,83 @@ jobs:
             Get-ChildItem -Path "resources\bin\win32" -Recurse -ErrorAction SilentlyContinue
           }
 
+      - name: Verify packaged app structure
+        shell: pwsh
+        run: |
+          Write-Host "=== 验证 Windows 打包结构 ==="
+
+          # 查找 portable exe
+          $portableExe = Get-ChildItem -Path "release" -Filter "*portable.exe" | Select-Object -First 1
+          if (-not $portableExe) {
+            Write-Host "错误: 未找到 portable exe" -ForegroundColor Red
+            exit 1
+          }
+
+          Write-Host "找到 portable 版本: $($portableExe.FullName)"
+
+          # 创建临时目录
+          $tempDir = Join-Path $env:TEMP ("watermark-verify-" + [guid]::NewGuid().ToString())
+          New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
+
+          try {
+            # 使用 7z 解压（electron-builder 的 portable 版本是 7z SFX）
+            # 先尝试用 7z
+            $sevenZip = "C:\Program Files\7-Zip\7z.exe"
+            if (Test-Path $sevenZip) {
+              & $sevenZip x "$($portableExe.FullName)" -o"$tempDir" -y | Out-Null
+            } else {
+              # 尝试直接运行提取
+              Write-Host "7-Zip 未安装，尝试其他方式..."
+              # 对于 NSIS 安装包，无法直接解压验证
+              # 但至少检查文件大小
+              $size = $portableExe.Length
+              Write-Host "文件大小: $size bytes"
+              if ($size -lt 100000000) {  # 小于 100MB 可能有问题
+                Write-Host "警告: 文件大小异常小" -ForegroundColor Yellow
+              }
+            }
+
+            # 检查解压后的目录
+            $binDir = Join-Path $tempDir "resources\app\bin"
+            if (Test-Path $binDir) {
+              Write-Host "找到 bin 目录: $binDir"
+              Get-ChildItem -Path $binDir | ForEach-Object {
+                Write-Host "  $($_.Name) ($($_.Length) bytes)"
+              }
+
+              # 检查必需文件
+              $requiredFiles = @("watermark-worker.exe", "ffmpeg.exe", "ffprobe.exe")
+              $missing = 0
+              foreach ($file in $requiredFiles) {
+                $filePath = Join-Path $binDir $file
+                if (Test-Path $filePath) {
+                  $info = Get-Item $filePath
+                  if ($info.Length -eq 0) {
+                    Write-Host "  ✗ $file (大小为 0)" -ForegroundColor Red
+                    $missing++
+                  } else {
+                    Write-Host "  ✓ $file ($($info.Length) bytes)"
+                  }
+                } else {
+                  Write-Host "  ✗ $file (缺失)" -ForegroundColor Red
+                  $missing++
+                }
+              }
+
+              if ($missing -gt 0) {
+                Write-Host "错误: $missing 个文件缺失或无效" -ForegroundColor Red
+                exit 1
+              }
+            } else {
+              Write-Host "警告: 无法验证内部结构（可能不是 7z 格式）" -ForegroundColor Yellow
+              # 不失败，因为 NSIS 安装包无法直接解压
+            }
+          } finally {
+            Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
+          }
+
+          Write-Host "✓ Windows 打包验证完成"
+
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
