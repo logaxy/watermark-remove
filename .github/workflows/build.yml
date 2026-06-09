@@ -72,6 +72,86 @@ jobs:
             fi
           done
 
+      - name: Verify packaged app structure
+        run: |
+          set -e
+          DMG_PATH=$(ls release/*.dmg | head -1)
+          if [ -z "$DMG_PATH" ]; then
+            echo "错误: 未找到 .dmg 文件" >&2
+            exit 1
+          fi
+          echo "验证打包后的应用: $DMG_PATH"
+
+          # 创建挂载点
+          MOUNT_POINT="/tmp/watermark-verify-$RANDOM"
+          mkdir -p "$MOUNT_POINT"
+
+          # 挂载 dmg
+          echo "挂载 dmg..."
+          hdiutil attach "$DMG_PATH" -mountpoint "$MOUNT_POINT" -nobrowse -quiet
+
+          # 查找 .app
+          APP_PATH=$(find "$MOUNT_POINT" -name "*.app" -maxdepth 2 | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "错误: 未找到 .app" >&2
+            hdiutil detach "$MOUNT_POINT" -quiet || true
+            exit 1
+          fi
+          echo "找到应用: $APP_PATH"
+
+          # 检查 Resources/bin 目录
+          BIN_DIR="$APP_PATH/Contents/Resources/bin"
+          echo "检查 bin 目录: $BIN_DIR"
+
+          if [ ! -d "$BIN_DIR" ]; then
+            echo "错误: bin 目录不存在" >&2
+            echo "Contents/Resources 内容:"
+            ls -la "$APP_PATH/Contents/Resources/" >&2
+            hdiutil detach "$MOUNT_POINT" -quiet || true
+            exit 1
+          fi
+
+          echo "bin 目录内容:"
+          ls -la "$BIN_DIR"
+
+          # 检查必需文件
+          REQUIRED_FILES=(
+            "watermark-worker-arm64"
+            "watermark-worker-x64"
+            "ffmpeg-arm64"
+            "ffmpeg-x64"
+            "ffprobe-arm64"
+            "ffprobe-x64"
+          )
+
+          MISSING=0
+          for file in "${REQUIRED_FILES[@]}"; do
+            FILE_PATH="$BIN_DIR/$file"
+            if [ -f "$FILE_PATH" ]; then
+              SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo "?")
+              echo "  ✓ $file (${SIZE} bytes)"
+              # 检查文件大小
+              if [ "$SIZE" -eq 0 ]; then
+                echo "    ✗ 错误: 文件大小为 0" >&2
+                MISSING=$((MISSING + 1))
+              fi
+            else
+              echo "  ✗ $file (缺失)" >&2
+              MISSING=$((MISSING + 1))
+            fi
+          done
+
+          # 卸载 dmg
+          hdiutil detach "$MOUNT_POINT" -quiet || true
+          rm -rf "$MOUNT_POINT"
+
+          if [ "$MISSING" -gt 0 ]; then
+            echo "错误: $MISSING 个文件缺失或无效" >&2
+            exit 1
+          fi
+
+          echo "✓ 打包验证通过"
+
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
