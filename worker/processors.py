@@ -149,8 +149,30 @@ def process_inpaint(input_path: str, output_path: str, roi: dict, temp_root: str
 
         fps = cap.get(cv2.CAP_PROP_FPS) or 25
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or max(1, info["duration"] * fps))
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(silent_video, fourcc, fps, (info["width"], info["height"]))
+
+        # 按优先级尝试不同编码器，兼容不同架构/平台的 OpenCV 构建
+        # - avc1: macOS VideoToolbox H.264（Intel 原生 & Apple Silicon 均可用）
+        # - mp4v: MPEG-4 Part 2（某些 OpenCV wheel 默认包含）
+        # - MJPG (AVI): Motion JPEG（几乎所有 OpenCV 构建都支持）
+        codec_attempts = [
+            ("avc1", ".mp4"),
+            ("mp4v", ".mp4"),
+            ("MJPG", ".avi"),
+        ]
+        writer = None
+        for fourcc_str, ext in codec_attempts:
+            fourcc = cv2.VideoWriter_fourcc(*fourcc_str)
+            candidate_path = os.path.join(tmp_dir, f"video_no_audio{ext}")
+            w = cv2.VideoWriter(candidate_path, fourcc, fps, (info["width"], info["height"]))
+            if w.isOpened():
+                writer = w
+                silent_video = candidate_path
+                break
+            w.release()
+
+        if writer is None:
+            cap.release()
+            raise RuntimeError("无法创建视频输出文件，当前环境不支持 avc1 / mp4v / MJPG 编码器")
 
         mask = np.zeros((info["height"], info["width"]), dtype=np.uint8)
         x = int(roi["x"])
