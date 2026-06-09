@@ -38,6 +38,13 @@ def resolve_binary(name: str) -> str:
     suffix = _exe_suffix()
     directory = bin_dir()
     if directory:
+        # macOS Universal 包：按当前架构选择对应二进制
+        if sys.platform == "darwin":
+            import platform
+            arch = "arm64" if platform.machine() == "arm64" else "x64"
+            arch_candidate = directory / f"{name}-{arch}"
+            if arch_candidate.exists():
+                return str(arch_candidate)
         candidate = directory / f"{name}{suffix}"
         if candidate.exists():
             return str(candidate)
