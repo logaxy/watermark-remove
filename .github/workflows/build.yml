@@ -225,22 +225,33 @@ jobs:
           $tempDir = Join-Path $env:TEMP ("watermark-verify-" + [guid]::NewGuid().ToString())
           New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
 
+          $extracted = $false
           try {
-            # 使用 7z 解压（electron-builder 的 portable 版本是 7z SFX）
-            # 先尝试用 7z
+            # 尝试用 7z 解压
             $sevenZip = "C:\Program Files\7-Zip\7z.exe"
             if (Test-Path $sevenZip) {
               & $sevenZip x "$($portableExe.FullName)" -o"$tempDir" -y | Out-Null
+              $extracted = $true
             } else {
-              # 尝试直接运行提取
-              Write-Host "7-Zip 未安装，尝试其他方式..."
-              # 对于 NSIS 安装包，无法直接解压验证
-              # 但至少检查文件大小
+              # 尝试用 PowerShell Expand-Archive
+              try {
+                Expand-Archive -Path "$($portableExe.FullName)" -DestinationPath "$tempDir" -Force
+                $extracted = $true
+              } catch {
+                Write-Host "无法解压 portable 版本，尝试检查文件大小..." -ForegroundColor Yellow
+              }
+            }
+
+            if (-not $extracted) {
+              # 无法解压，至少检查文件大小
               $size = $portableExe.Length
               Write-Host "文件大小: $size bytes"
-              if ($size -lt 100000000) {  # 小于 100MB 可能有问题
-                Write-Host "警告: 文件大小异常小" -ForegroundColor Yellow
+              if ($size -lt 100000000) {
+                Write-Host "错误: 文件大小异常小，可能打包不完整" -ForegroundColor Red
+                exit 1
               }
+              Write-Host "警告: 无法验证内部结构，但文件大小正常" -ForegroundColor Yellow
+              exit 0  # 文件大小正常，不失败
             }
 
             # 检查解压后的目录
@@ -275,8 +286,8 @@ jobs:
                 exit 1
               }
             } else {
-              Write-Host "警告: 无法验证内部结构（可能不是 7z 格式）" -ForegroundColor Yellow
-              # 不失败，因为 NSIS 安装包无法直接解压
+              Write-Host "错误: 无法找到 bin 目录，打包结构可能有问题" -ForegroundColor Red
+              exit 1
             }
           } finally {
             Remove-Item -Recurse -Force $tempDir -ErrorAction SilentlyContinue
