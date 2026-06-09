@@ -64,8 +64,8 @@ jobs:
       - name: Verify built workers
         run: |
           echo "Built workers:"
-          ls -la resources/bin/mac/ || echo "Directory not found"
-          for f in resources/bin/mac/watermark-worker-*; do
+          ls -la resources/bin/darwin/ || echo "Directory not found"
+          for f in resources/bin/darwin/watermark-worker-*; do
             if [ -f "$f" ]; then
               echo "Checking: $f"
               file "$f" || true
