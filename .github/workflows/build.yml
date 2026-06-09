@@ -117,18 +117,22 @@ jobs:
           # 检查必需文件
           REQUIRED_FILES=(
             "watermark-worker-arm64"
-            "watermark-worker-x64"
             "ffmpeg-arm64"
             "ffmpeg-x64"
             "ffprobe-arm64"
             "ffprobe-x64"
           )
 
+          # x86_64 worker 是可选的（取决于 Rosetta 2 可用性）
+          OPTIONAL_FILES=(
+            "watermark-worker-x64"
+          )
+
           MISSING=0
           for file in "${REQUIRED_FILES[@]}"; do
             FILE_PATH="$BIN_DIR/$file"
             if [ -f "$FILE_PATH" ]; then
-              SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo "?")
+              SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo "0")
               echo "  ✓ $file (${SIZE} bytes)"
               # 检查文件大小
               if [ "$SIZE" -eq 0 ]; then
@@ -138,6 +142,17 @@ jobs:
             else
               echo "  ✗ $file (缺失)" >&2
               MISSING=$((MISSING + 1))
+            fi
+          done
+
+          # 检查可选文件
+          for file in "${OPTIONAL_FILES[@]}"; do
+            FILE_PATH="$BIN_DIR/$file"
+            if [ -f "$FILE_PATH" ]; then
+              SIZE=$(stat -f%z "$FILE_PATH" 2>/dev/null || stat -c%s "$FILE_PATH" 2>/dev/null || echo "0")
+              echo "  ✓ $file (${SIZE} bytes) (可选)"
+            else
+              echo "  ⚠ $file (缺失，但在 CI 环境下可接受)"
             fi
           done
 

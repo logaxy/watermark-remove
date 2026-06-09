@@ -19,25 +19,33 @@ Write-Host "==> 下载中文字体"
 $FontDir = Join-Path $Root "resources\fonts"
 $FontTarget = Join-Path $FontDir "NotoSansSC-Regular.otf"
 $FontUrls = @(
-  "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf",
-  "https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/03_NotoSansCJKsc-Regular.otf"
+  "https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/03_NotoSansCJKsc-Regular.otf",
+  "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf"
 )
 if (-not (Test-Path $FontTarget)) {
   New-Item -ItemType Directory -Force -Path $FontDir | Out-Null
   $downloaded = $false
   foreach ($url in $FontUrls) {
     try {
-      Invoke-WebRequest -Uri $url -OutFile $FontTarget
-      $downloaded = $true
-      break
+      Write-Host "尝试下载字体: $url"
+      Invoke-WebRequest -Uri $url -OutFile $FontTarget -MaximumRedirection 5 -TimeoutSec 60
+      if ((Get-Item $FontTarget).Length -gt 0) {
+        $downloaded = $true
+        Write-Host "字体下载成功"
+        break
+      }
     } catch {
-      Write-Host "字体下载失败: $url"
+      Write-Host "字体下载失败: $url - $($_.Exception.Message)"
     }
   }
   if (-not $downloaded) {
+    Write-Host "警告: 无法下载字体，尝试使用系统字体"
     $systemFont = "C:\Windows\Fonts\msyh.ttc"
     if (Test-Path $systemFont) {
       Copy-Item $systemFont $FontTarget
+      Write-Host "已复制系统字体"
+    } else {
+      Write-Host "警告: 无法获取中文字体，应用可能无法正确显示中文"
     }
   }
 }

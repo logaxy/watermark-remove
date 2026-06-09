@@ -74,6 +74,29 @@ build_arch() {
 # 检测是否在 CI 环境
 IS_CI="${CI:-false}"
 
+# 在 CI 环境下，检测是否为 Apple Silicon Mac
+# GitHub Actions 的 macos-latest 可能是 Apple Silicon，但 Rosetta 2 可能不可用或工作不正常
+if [ "$IS_CI" = "true" ] && [ "$CURRENT_ARCH" = "arm64" ]; then
+  echo "CI 环境检测到 Apple Silicon Mac"
+  # 尝试检测 Rosetta 2 是否真正可用（不只是安装）
+  if ! arch -x86_64 /usr/bin/true 2>/dev/null; then
+    echo "警告: CI 环境中 Rosetta 2 不可用，将只构建 arm64 架构"
+    # 在 CI 环境下如果只构建一个架构，仍然继续，不标记为失败
+    if build_arch arm64; then
+      cp "$BUILD_DIR/arm64/dist/watermark-worker" "$OUT_DIR/watermark-worker-arm64"
+      echo "✓ 已生成 arm64 Worker: $OUT_DIR/watermark-worker-arm64"
+      chmod +x "$OUT_DIR"/watermark-worker-* 2>/dev/null || true
+      echo ""
+      echo "构建完成: 1 个架构成功 (x86_64 被跳过)"
+      ls -la "$OUT_DIR"/watermark-worker-* 2>/dev/null || echo "未找到构建产物"
+      exit 0
+    else
+      echo "✗ arm64 Worker 构建失败" >&2
+      exit 1
+    fi
+  fi
+fi
+
 # 清理旧的构建
 rm -f "$OUT_DIR/watermark-worker" "$OUT_DIR/watermark-worker-arm64" "$OUT_DIR/watermark-worker-x64"
 
