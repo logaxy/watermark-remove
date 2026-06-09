@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-# electron-builder 在 Windows 上 ${os} = win32，输出目录必须与此一致
-$OutDir = Join-Path $Root "resources\bin\win32"
+# electron-builder 在 Windows 上 ${os} = win，输出目录必须与此一致
+$OutDir = Join-Path $Root "resources\bin\win"
 $TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ffmpeg-" + [guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 New-Item -ItemType Directory -Force -Path $TmpDir | Out-Null

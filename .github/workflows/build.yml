@@ -64,8 +64,8 @@ jobs:
       - name: Verify built workers
         run: |
           echo "Built workers:"
-          ls -la resources/bin/darwin/ || echo "Directory not found"
-          for f in resources/bin/darwin/watermark-worker-*; do
+          ls -la resources/bin/mac/ || echo "Directory not found"
+          for f in resources/bin/mac/watermark-worker-*; do
             if [ -f "$f" ]; then
               echo "Checking: $f"
               file "$f" || true
@@ -73,10 +73,10 @@ jobs:
           done
           echo ""
           echo "FFmpeg binaries:"
-          ls -la resources/bin/darwin/ffmpeg-* resources/bin/darwin/ffprobe-* 2>/dev/null || echo "FFmpeg binaries not found"
+          ls -la resources/bin/mac/ffmpeg-* resources/bin/mac/ffprobe-* 2>/dev/null || echo "FFmpeg binaries not found"
           echo ""
           echo "Binary architectures:"
-          file resources/bin/darwin/* 2>/dev/null || true
+          file resources/bin/mac/* 2>/dev/null || true
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
@@ -122,24 +122,24 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "=== Verifying Windows Worker ==="
-          $workerPath = "resources\bin\win32\watermark-worker.exe"
+          $workerPath = "resources\bin\win\watermark-worker.exe"
           if (Test-Path $workerPath) {
             Write-Host "✓ Worker found: $workerPath"
             $fileInfo = Get-Item $workerPath
             Write-Host "  Size: $($fileInfo.Length) bytes"
           } else {
             Write-Host "✗ Worker NOT found: $workerPath"
-            Write-Host "Contents of resources\bin\win32:"
-            Get-ChildItem -Path "resources\bin\win32" -Recurse -ErrorAction SilentlyContinue
+            Write-Host "Contents of resources\bin\win:"
+            Get-ChildItem -Path "resources\bin\win" -Recurse -ErrorAction SilentlyContinue
           }
           Write-Host ""
           Write-Host "=== Verifying FFmpeg ==="
-          if (Test-Path "resources\bin\win32\ffmpeg.exe") {
+          if (Test-Path "resources\bin\win\ffmpeg.exe") {
             Write-Host "✓ ffmpeg.exe found"
           } else {
             Write-Host "✗ ffmpeg.exe NOT found"
           }
-          if (Test-Path "resources\bin\win32\ffprobe.exe") {
+          if (Test-Path "resources\bin\win\ffprobe.exe") {
             Write-Host "✓ ffprobe.exe found"
           } else {
             Write-Host "✗ ffprobe.exe NOT found"

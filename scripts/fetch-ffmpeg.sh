@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# electron-builder 在 macOS 上 ${os} = darwin，脚本输出目录必须与此一致
-OUT_DIR="$ROOT/resources/bin/darwin"
+# electron-builder 在 macOS 上 ${os} = mac，脚本输出目录必须与此一致
+OUT_DIR="$ROOT/resources/bin/mac"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 

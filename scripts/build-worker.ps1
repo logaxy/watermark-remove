@@ -2,8 +2,8 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $WorkerDir = Join-Path $Root "worker"
-# electron-builder 在 Windows 上 ${os} = win32，输出目录必须与此一致
-$OutDir = Join-Path $Root "resources\bin\win32"
+# electron-builder 在 Windows 上 ${os} = win，输出目录必须与此一致
+$OutDir = Join-Path $Root "resources\bin\win"
 $VenvPython = Join-Path $Root ".venv\Scripts\python.exe"
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
