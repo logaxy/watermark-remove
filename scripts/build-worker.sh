@@ -73,6 +73,7 @@ build_arch() {
 
 # 检测是否在 CI 环境
 IS_CI="${CI:-false}"
+CURRENT_ARCH="$(uname -m)"
 
 # 在 CI 环境下，检测是否为 Apple Silicon Mac
 # GitHub Actions 的 macos-latest 可能是 Apple Silicon，但 Rosetta 2 可能不可用或工作不正常
@@ -100,7 +101,6 @@ fi
 # 清理旧的构建
 rm -f "$OUT_DIR/watermark-worker" "$OUT_DIR/watermark-worker-arm64" "$OUT_DIR/watermark-worker-x64"
 
-CURRENT_ARCH="$(uname -m)"
 BUILD_SUCCESS=0
 BUILD_FAILED=0
 

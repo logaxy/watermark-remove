@@ -48,6 +48,11 @@ def resolve_binary(name: str) -> str:
     suffix = _exe_suffix()
     directory = bin_dir()
 
+    # 优先使用主进程通过环境变量传递的完整路径
+    env_path = os.environ.get(f"WATERMARK_{name.upper()}_PATH")
+    if env_path and Path(env_path).exists():
+        return env_path
+
     if directory:
         # macOS: 先尝试带架构后缀的版本
         if sys.platform == "darwin":
@@ -56,7 +61,7 @@ def resolve_binary(name: str) -> str:
             if arch_candidate.exists():
                 return str(arch_candidate)
 
-        # 尝试默认名称
+        # 尝试默认名称（universal 打包后的文件名）
         candidate = directory / f"{name}{suffix}"
         if candidate.exists():
             return str(candidate)

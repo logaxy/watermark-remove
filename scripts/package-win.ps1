@@ -3,6 +3,10 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
 
+Write-Host "==> 确保资源目录存在"
+New-Item -ItemType Directory -Force -Path "resources\bin\win32" | Out-Null
+New-Item -ItemType Directory -Force -Path "resources\fonts" | Out-Null
+
 Write-Host "==> 安装 Node 依赖"
 npm install
 

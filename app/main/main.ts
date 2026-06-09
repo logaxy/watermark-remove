@@ -287,6 +287,20 @@ function performStartupCheck(): { ok: boolean; errors: string[] } {
   for (const file of required) {
     const filePath = path.join(bundledBinDir, file);
     if (!fs.existsSync(filePath)) {
+      // 回退：尝试不带架构后缀的文件名（universal 打包后的文件名）
+      const fallbackFile = file.replace(/-(arm64|x64)(\.exe)?$/, "$2");
+      if (fallbackFile !== file) {
+        const fallbackPath = path.join(bundledBinDir, fallbackFile);
+        if (fs.existsSync(fallbackPath)) {
+          const stats = fs.statSync(fallbackPath);
+          if (stats.size === 0) {
+            errors.push(`文件大小为 0: ${fallbackPath}`);
+          } else {
+            console.log(`[StartupCheck] 使用回退文件: ${fallbackFile}`);
+          }
+          continue;
+        }
+      }
       errors.push(`缺少文件: ${filePath}`);
     } else {
       const stats = fs.statSync(filePath);
@@ -375,11 +389,28 @@ function workerCommand(mode: "process" | "probe") {
 }
 
 function workerEnv() {
+  // 检测 FFmpeg 实际文件名（带架构后缀或不带）
+  let ffmpegName = "ffmpeg";
+  let ffprobeName = "ffprobe";
+
+  if (process.platform === "darwin") {
+    const arch = process.arch === "arm64" ? "arm64" : "x64";
+    const ffmpegWithArch = `ffmpeg-${arch}`;
+    const ffprobeWithArch = `ffprobe-${arch}`;
+
+    if (fs.existsSync(path.join(bundledBinDir, ffmpegWithArch))) {
+      ffmpegName = ffmpegWithArch;
+      ffprobeName = ffprobeWithArch;
+    }
+  }
+
   return {
     ...process.env,
     PYTHONUNBUFFERED: "1",
     WATERMARK_BIN_DIR: bundledBinDir,
-    WATERMARK_RESOURCES_DIR: resourcesPath
+    WATERMARK_RESOURCES_DIR: resourcesPath,
+    WATERMARK_FFMPEG_PATH: path.join(bundledBinDir, ffmpegName),
+    WATERMARK_FFPROBE_PATH: path.join(bundledBinDir, ffprobeName),
   };
 }
 

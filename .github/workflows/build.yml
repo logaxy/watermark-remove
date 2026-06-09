@@ -201,6 +201,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Prepare Windows binaries
+        shell: pwsh
+        run: |
+          $BinDir = "resources\bin\win32"
+          New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
+          Write-Host "=== 确保 bin 目录存在 ==="
+          Write-Host "目录: $(Resolve-Path $BinDir)"
+
       - name: Package Windows
         shell: pwsh
         env:
