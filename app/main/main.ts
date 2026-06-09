@@ -114,6 +114,12 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // 启动自检
+  const check = performStartupCheck();
+  if (!check.ok) {
+    console.error("启动自检失败:", check.errors);
+  }
+
   protocol.handle("media", (request) => {
     const url = new URL(request.url);
     const filePath = decodeURIComponent(url.searchParams.get("path") || "");
@@ -234,6 +240,72 @@ function resolvePythonBin() {
   return process.platform === "win32" ? "python" : "python3";
 }
 
+function getRequiredBinaries(): string[] {
+  const ext = process.platform === "win32" ? ".exe" : "";
+
+  if (process.platform === "darwin") {
+    const arch = process.arch === "arm64" ? "arm64" : "x64";
+    return [
+      `watermark-worker-${arch}${ext}`,
+      `ffmpeg-${arch}${ext}`,
+      `ffprobe-${arch}${ext}`,
+    ];
+  }
+
+  // Windows
+  return [
+    `watermark-worker${ext}`,
+    `ffmpeg${ext}`,
+    `ffprobe${ext}`,
+  ];
+}
+
+function performStartupCheck(): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  console.log("[StartupCheck] 开始启动自检...");
+  console.log(`[StartupCheck] platform=${process.platform}, arch=${process.arch}`);
+  console.log(`[StartupCheck] bundledBinDir=${bundledBinDir}`);
+  console.log(`[StartupCheck] isPackaged=${app.isPackaged}`);
+
+  // 检查 bin 目录是否存在
+  if (!fs.existsSync(bundledBinDir)) {
+    errors.push(`Bin 目录不存在: ${bundledBinDir}`);
+    return { ok: false, errors };
+  }
+
+  // 列出 bin 目录内容
+  try {
+    const files = fs.readdirSync(bundledBinDir);
+    console.log(`[StartupCheck] Bin 目录文件: ${files.join(", ")}`);
+  } catch (e) {
+    errors.push(`无法读取 Bin 目录: ${e}`);
+  }
+
+  // 检查必需文件
+  const required = getRequiredBinaries();
+  for (const file of required) {
+    const filePath = path.join(bundledBinDir, file);
+    if (!fs.existsSync(filePath)) {
+      errors.push(`缺少文件: ${filePath}`);
+    } else {
+      const stats = fs.statSync(filePath);
+      if (stats.size === 0) {
+        errors.push(`文件大小为 0: ${filePath}`);
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    console.error("[StartupCheck] 自检失败:");
+    errors.forEach(e => console.error(`  ✗ ${e}`));
+  } else {
+    console.log("[StartupCheck] 自检通过 ✓");
+  }
+
+  return { ok: errors.length === 0, errors };
+}
+
 function resolveWorkerBinary() {
   const ext = process.platform === "win32" ? ".exe" : "";
 
@@ -276,7 +348,20 @@ function resolveWorkerBinary() {
     console.error(`[resolveWorkerBinary] Error listing directory:`, e);
   }
 
-  throw new Error(`未找到内置处理引擎 (${process.platform} ${process.arch})，请重新安装应用`);
+  // 改进的错误信息
+  const platformLabel = process.platform === "darwin" ? "macOS" : process.platform;
+  const archLabel = process.arch;
+  const expectedFiles = getRequiredBinaries();
+
+  throw new Error(
+    `未找到内置处理引擎 (${platformLabel} ${archLabel})\n\n` +
+    `期望在以下目录找到文件:\n${bundledBinDir}\n\n` +
+    `需要的文件:\n${expectedFiles.map(f => `  - ${f}`).join("\n")}\n\n` +
+    `可能原因:\n` +
+    `  1. 安装包不完整，请重新下载安装\n` +
+    `  2. 应用文件被损坏或删除\n\n` +
+    `如果问题持续，请联系开发者。`
+  );
 }
 
 function workerCommand(mode: "process" | "probe") {
