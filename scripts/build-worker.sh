@@ -71,11 +71,15 @@ build_arch() {
   )
 }
 
+# 检测是否在 CI 环境
+IS_CI="${CI:-false}"
+
 # 清理旧的构建
 rm -f "$OUT_DIR/watermark-worker" "$OUT_DIR/watermark-worker-arm64" "$OUT_DIR/watermark-worker-x64"
 
 CURRENT_ARCH="$(uname -m)"
 BUILD_SUCCESS=0
+BUILD_FAILED=0
 
 # 优先构建当前架构
 echo "当前架构: $CURRENT_ARCH"
@@ -84,6 +88,9 @@ if [ "$CURRENT_ARCH" = "arm64" ]; then
     cp "$BUILD_DIR/arm64/dist/watermark-worker" "$OUT_DIR/watermark-worker-arm64"
     echo "✓ 已生成 arm64 Worker: $OUT_DIR/watermark-worker-arm64"
     BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
+  else
+    echo "✗ arm64 Worker 构建失败" >&2
+    BUILD_FAILED=$((BUILD_FAILED + 1))
   fi
 
   # 尝试构建 x86_64
@@ -92,10 +99,13 @@ if [ "$CURRENT_ARCH" = "arm64" ]; then
       cp "$BUILD_DIR/x86_64/dist/watermark-worker" "$OUT_DIR/watermark-worker-x64"
       echo "✓ 已生成 x64 Worker: $OUT_DIR/watermark-worker-x64"
       BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
+    else
+      echo "✗ x86_64 Worker 构建失败" >&2
+      BUILD_FAILED=$((BUILD_FAILED + 1))
     fi
   else
-    echo "⚠ 警告: 当前环境无法构建 x86_64 Worker，Intel Mac 将无法使用"
-    echo "  如果在 GitHub Actions 上运行，请确保使用支持双架构的 runner"
+    echo "✗ 错误: Rosetta 2 不可用，无法构建 x86_64 Worker" >&2
+    BUILD_FAILED=$((BUILD_FAILED + 1))
   fi
 
 elif [ "$CURRENT_ARCH" = "x86_64" ]; then
@@ -103,6 +113,9 @@ elif [ "$CURRENT_ARCH" = "x86_64" ]; then
     cp "$BUILD_DIR/x86_64/dist/watermark-worker" "$OUT_DIR/watermark-worker-x64"
     echo "✓ 已生成 x64 Worker: $OUT_DIR/watermark-worker-x64"
     BUILD_SUCCESS=$((BUILD_SUCCESS + 1))
+  else
+    echo "✗ x86_64 Worker 构建失败" >&2
+    BUILD_FAILED=$((BUILD_FAILED + 1))
   fi
 
   # 在 Intel Mac 上通常无法构建 arm64
@@ -117,3 +130,10 @@ chmod +x "$OUT_DIR"/watermark-worker-* 2>/dev/null || true
 echo ""
 echo "构建完成: $BUILD_SUCCESS 个架构成功"
 ls -la "$OUT_DIR"/watermark-worker-* 2>/dev/null || echo "未找到构建产物"
+
+# CI 环境下，任何构建失败都退出
+if [ "$IS_CI" = "true" ] && [ "$BUILD_FAILED" -gt 0 ]; then
+  echo ""
+  echo "✗ CI 环境检测到 $BUILD_FAILED 个架构构建失败，退出" >&2
+  exit 1
+fi
