@@ -38,10 +38,15 @@ def resolve_binary(name: str) -> str:
     suffix = _exe_suffix()
     directory = bin_dir()
     if directory:
-        # macOS Universal 包：按当前架构选择对应二进制
+        # macOS Universal 包：按硬件架构选择对应二进制
         if sys.platform == "darwin":
-            import platform
-            arch = "arm64" if platform.machine() == "arm64" else "x64"
+            import subprocess
+            try:
+                result = subprocess.run(["sysctl", "-n", "hw.optional.arm64"], capture_output=True, text=True)
+                arch = "arm64" if result.stdout.strip() == "1" else "x64"
+            except Exception:
+                import platform
+                arch = "arm64" if platform.machine() == "arm64" else "x64"
             arch_candidate = directory / f"{name}-{arch}"
             if arch_candidate.exists():
                 return str(arch_candidate)
