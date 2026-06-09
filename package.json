@@ -1,6 +1,6 @@
 {
   "name": "watermark-remove",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "author": "Batch Video Watermark Master",
   "description": "Local batch video watermark remover and sticker cover desktop app.",
